@@ -2,7 +2,7 @@
 
 Projeto de Sistemas Distribuídos dividido em cinco partes: Request-Reply, Publisher-Subscriber, relógios e heartbeat, eleição e consistência com replicação.
 
-O sistema é executado sem interação manual. Dois bots em JavaScript conversam com dois servidores em Python. A comunicação é feita com ZeroMQ e as mensagens são serializadas com MessagePack. Cada servidor possui seu próprio banco SQLite.
+O sistema é executado sem interação manual. Dois bots em JavaScript conversam com três servidores em Python. A comunicação é feita com ZeroMQ e as mensagens são serializadas com MessagePack. Cada servidor possui seu próprio banco SQLite.
 
 ## Serviços
 
@@ -11,7 +11,7 @@ O sistema é executado sem interação manual. Dois bots em JavaScript conversam
 | `broker` | Intermedia os pedidos dos bots (ROUTER na porta 5555 e DEALER na 5556) |
 | `pubproxy` | Distribui publicações por tópico (XSUB 5557 e XPUB 5558) |
 | `referencia` | Controla a lista de servidores ativos, ranks e heartbeat (5559) |
-| `server1` e `server2` | Processam os pedidos, publicam mensagens, participam da eleição e sincronizam os bancos (5560 entre servidores) |
+| `server1`, `server2` e `server3` | Processam os pedidos, publicam mensagens, participam da eleição e sincronizam os bancos (5560 entre servidores) |
 | `bot1` e `bot2` | Fazem login, criam canais, se inscrevem e publicam mensagens |
 
 A linguagem Python é usada nos servidores e serviços auxiliares; JavaScript é usado nos bots. Essa combinação contempla as duas linguagens exigidas para uma entrega individual.
@@ -30,7 +30,7 @@ Em outro terminal:
 
 ```sh
 docker compose ps
-docker compose logs -f server1 server2 bot1 bot2
+docker compose logs -f server1 server2 server3 bot1 bot2
 ```
 
 Os bots iniciam sozinhos e enviam grupos de dez mensagens, com um segundo entre elas. Para encerrar sem apagar os bancos, use `Ctrl+C` e, se desejar, `docker compose down`. Não use `docker compose down -v` se quiser preservar o histórico.
@@ -96,3 +96,27 @@ Foram verificados localmente a sintaxe Python e JavaScript, os testes automátic
 ## Limitações
 
 Este é um protótipo acadêmico. A eleição, os relógios e a replicação são implementações simplificadas para demonstrar os conceitos da disciplina. A replicação ocorre apenas entre servidores disponíveis, utiliza lotes periódicos e pode apresentar atraso temporário entre as cópias. Com mais de dois servidores, todos devem ter um nome válido na rede e configurar o mesmo serviço de referência, broker e proxy.
+
+## Demonstração com três servidores
+
+Com todos os serviços iniciados, execute em outro terminal:
+
+```sh
+docker compose ps
+docker compose logs --tail=100 server1 server2 server3 | grep -E 'COORDENADOR_ELEITO|NOVO_COORDENADOR|AGUARDANDO_COORDENADOR'
+```
+
+O eleito deve aparecer nos logs como `COORDENADOR_ELEITO`. O rank é atribuído pela referência na ordem de cadastro; portanto, não assuma que `server3` será sempre eleito. Quando identificar o nome do coordenador, pare o serviço correspondente. Por exemplo, se `server3` foi eleito:
+
+```sh
+docker compose stop server3
+docker compose logs -f --tail=30 server1 server2
+```
+
+Observe um novo evento `COORDENADOR_ELEITO` em um dos servidores restantes. Para restaurar o terceiro servidor:
+
+```sh
+docker compose start server3
+```
+
+A eleição e a replicação podem levar alguns segundos; como o sistema usa temporizadores e detecção periódica, não há troca instantânea garantida. Não use `docker compose down -v`, pois remove os volumes persistentes.

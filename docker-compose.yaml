@@ -45,6 +45,19 @@ services:
       - pubproxy
       - referencia
     restart: unless-stopped
+  server3:
+    build: .
+    command: python -m python.server
+    environment:
+      SERVER_NAME: server3
+      DB_PATH: /data/events.sqlite3
+    volumes:
+      - server3_data:/data
+    depends_on:
+      - broker
+      - pubproxy
+      - referencia
+    restart: unless-stopped
   bot1:
     build: ./bot
     environment:
@@ -52,6 +65,7 @@ services:
     depends_on:
       - server1
       - server2
+      - server3
     restart: unless-stopped
   bot2:
     build: ./bot
@@ -60,7 +74,9 @@ services:
     depends_on:
       - server1
       - server2
+      - server3
     restart: unless-stopped
 volumes:
   server1_data:
   server2_data:
+  server3_data:
