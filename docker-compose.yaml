@@ -1,0 +1,66 @@
+name: sistemas-distribuidos-parte5
+services:
+  broker:
+    build: .
+    command: python -m python.broker
+    ports:
+      - "5555:5555"
+    restart: unless-stopped
+  pubproxy:
+    build: .
+    command: python -m python.pubproxy
+    ports:
+      - "5557:5557"
+      - "5558:5558"
+    restart: unless-stopped
+  referencia:
+    build: .
+    command: python -m python.referencia
+    environment:
+      HEARTBEAT_TIMEOUT: 45
+    restart: unless-stopped
+  server1:
+    build: .
+    command: python -m python.server
+    environment:
+      SERVER_NAME: server1
+      DB_PATH: /data/events.sqlite3
+    volumes:
+      - server1_data:/data
+    depends_on:
+      - broker
+      - pubproxy
+      - referencia
+    restart: unless-stopped
+  server2:
+    build: .
+    command: python -m python.server
+    environment:
+      SERVER_NAME: server2
+      DB_PATH: /data/events.sqlite3
+    volumes:
+      - server2_data:/data
+    depends_on:
+      - broker
+      - pubproxy
+      - referencia
+    restart: unless-stopped
+  bot1:
+    build: ./bot
+    environment:
+      BOT_NAME: bot1
+    depends_on:
+      - server1
+      - server2
+    restart: unless-stopped
+  bot2:
+    build: ./bot
+    environment:
+      BOT_NAME: bot2
+    depends_on:
+      - server1
+      - server2
+    restart: unless-stopped
+volumes:
+  server1_data:
+  server2_data:
