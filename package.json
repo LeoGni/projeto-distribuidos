@@ -1,0 +1,4 @@
+{
+  "name": "sd-bot", "version": "1.0.0", "private": true, "type": "commonjs",
+  "dependencies": {"zeromq": "^6.4.2", "@msgpack/msgpack": "^3.1.2"}
+}
